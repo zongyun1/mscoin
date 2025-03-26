@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  mysql:
+    container_name: mysql8
+    image: mysql/mysql-server:${MYSQL_VERSION:-8.0}  # Fallback to 8.0 if .env missing
+    platform: linux/amd64  # Required for Apple Silicon (M1/M2)
+    restart: always
+    ports:
+      - "${MYSQL_PORT:-3309}:3306"  # Default to 3309 if .env missing
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}  # Fallback to 'root'
+      MYSQL_DATABASE: zero_mall
+      MYSQL_USER: ${MYSQL_USER:-user}  # Optional: Add if needed
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password}  # Optional
+    volumes:
+      - "${MYSQL_DIR:-./mysql}/data:/var/lib/mysql"
+      - "${MYSQL_DIR:-./mysql}/conf:/etc/mysql/conf.d"
+      - "${MYSQL_DIR:-./mysql}/logs:/logs"
+    command: [
+      "--default-authentication-plugin=mysql_native_password",
+      "--character-set-server=utf8mb4",
+      "--collation-server=utf8mb4_general_ci",
+      "--explicit_defaults_for_timestamp=true",
+      "--lower_case_table_names=1"
+    ]
+
+  redis:
+    container_name: redis6
+    image: redis:${REDIS_VERSION:-6.2}-alpine  # Lightweight Alpine image
+    restart: always
+    volumes:
+      - "${REDIS_DIR:-./redis}/data:/data"
+      - "${REDIS_DIR:-./redis}/conf/redis.conf:/etc/redis/redis.conf"
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server /etc/redis/redis.conf --appendonly yes  # Enable persistence
+
+  etcd:
+    container_name: etcd3
+    image: quay.io/coreos/etcd:${ETCD_VERSION:-v3.5.0}
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_ADVERTISE_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+    privileged: true
+    volumes:
+      - "${ETCD_DIR:-./etcd}/data:/etcd-data"
+    ports:
+      - "${ETCD_PORT:-2379}:2379"
+      - "2380:2380"
